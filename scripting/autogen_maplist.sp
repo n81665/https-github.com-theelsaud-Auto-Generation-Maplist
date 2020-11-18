@@ -37,6 +37,7 @@ public void OnServerLoad()
 Action cmd_Update(int iArgs)
 {
 	OnServerLoad();
+    return Plugin_Handled;
 }
 
 void fUpdateMapList()

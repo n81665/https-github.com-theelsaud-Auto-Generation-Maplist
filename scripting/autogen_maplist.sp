@@ -8,15 +8,15 @@
 #define INCLUDE_WS_MAPS 1
 #define ABC_SORT 1
 
-ArrayList g_hMaps;
-ArrayList g_hDeleteMaps;
-ArrayList g_hSortMaps;
+ArrayList 	g_hMaps, 
+			g_hDeleteMaps,
+			g_hSortMaps;
 
 public Plugin myinfo =
 {
 	name        = 	"Auto Generation MapList",
 	author      = 	"FIVE",
-	version     = 	"1.0",
+	version     = 	"1.0.0",
 	url         = 	"Source: http://hlmod.ru | Support: https://discord.gg/ajW69wN"
 };
 
@@ -29,14 +29,14 @@ public void OnPluginStart()
 	RegServerCmd("sm_update_maplist", cmd_Update);
 }
 
-public void OnServerLoad()
+public void OnMapStart()
 {
 	fUpdateMapList();
 }
 
 Action cmd_Update(int iArgs)
 {
-	OnServerLoad();
+	fUpdateMapList();
     return Plugin_Handled;
 }
 

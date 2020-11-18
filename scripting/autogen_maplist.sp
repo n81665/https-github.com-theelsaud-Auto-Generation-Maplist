@@ -29,7 +29,7 @@ public void OnPluginStart()
 	RegServerCmd("sm_update_maplist", cmd_Update);
 }
 
-public void OnMapStart()
+public void OnServerLoad()
 {
 	fUpdateMapList();
 }

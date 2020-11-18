@@ -27,13 +27,16 @@ public void OnPluginStart()
 	g_hSortMaps = new ArrayList(ByteCountToCells(64));
 
 	RegServerCmd("sm_update_maplist", cmd_Update);
+}
 
+public void OnServerLoad()
+{
 	fUpdateMapList();
 }
 
 Action cmd_Update(int iArgs)
 {
-	fUpdateMapList();
+	OnServerLoad();
 }
 
 void fUpdateMapList()

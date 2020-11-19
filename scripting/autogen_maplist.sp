@@ -4,7 +4,7 @@
 #define FILE_DELETE_PATH 		"configs/autogen_maplist/delete.txt"
 #define FILE_DISABLED_PATH 		"configs/autogen_maplist/disabled.txt"
 
-#define DEBUG 			1 	// Включает режим дебага
+#define DEBUG 			0 	// Включает режим дебага
 #define ABC_SORT 		0 	// Сортировать карты по алфавиту (Если включён данный пункт, то сортировка из файла sorted.txt не будет работать...)
 #define DELETE_MAPS 	0 	// 1 - удаляет карту из сервера и maplist, 0 - удаляет только из списка
 #define CLEAR_DIRMAP	0	// Не добавлять карты в директории maps из списка maplist.txt
@@ -73,6 +73,7 @@ void fUpdateMapList()
 
 	#if ABC_SORT == 1
 	g_hMaps.Sort(Sort_Ascending, Sort_String);
+	PrintToServer("[Resort Maps] ABC method...");
 	#else
 	fResortMaps();
 	#endif
@@ -124,7 +125,7 @@ stock void fLoadMaps(const char[] sPath)
 	delete dL;
 
 	#if DEBUG == 1
-	PrintToServer(" Finded %i maps (on - %s)", fileCounter, sPath);
+	PrintToServer("[Load Maps] Finded %i maps (on - %s)", fileCounter, sPath);
 	#endif
 }
 
@@ -158,7 +159,7 @@ stock bool IsDisabledPath(const char[] sPath)
 
 stock void fPrintDebug()
 {
-	PrintToServer("InfoMaps ---------------------");
+	PrintToServer("> DEBUG ---------------------");
 
 	char szBuffer[2][PLATFORM_MAX_PATH];
 	int iSize = g_hMaps.Length;
@@ -187,6 +188,8 @@ stock void fPrintDebug()
 		}
 	}
 	*/
+
+	PrintToServer("> DEBUG ---------------------");
 }
 
 stock void fSaveList(char[] sPath)
@@ -288,7 +291,7 @@ stock void fDeleteMaps()
 				g_hMaps.Erase(index);
 				g_hMapsPath.GetString(index, sPath, sizeof(sPath));
 				Format(szBuffer, sizeof(szBuffer), "%s/%s.bsp", sPath, szBuffer);
-				
+
 				#if DELETE_MAPS == 1
 				DeleteFile(szBuffer);
 				#endif
@@ -309,7 +312,7 @@ stock void fLoadCfg(char szPath[PLATFORM_MAX_PATH], int iType = 0)
 
 	if(FileExists(sPath))
 	{
-		PrintToServer("Loaded: %s ---------------------", szPath);
+		PrintToServer("[Load CFG] Loaded: %s ---------------------", szPath);
 		File hFile = OpenFile(sPath, "r");
 		if (hFile != null)
 		{
@@ -337,5 +340,5 @@ stock void fLoadCfg(char szPath[PLATFORM_MAX_PATH], int iType = 0)
 			}
 		}
 	}
-	else PrintToServer("Failed Loaded: %s ---------------------", szPath);
+	else PrintToServer("[Load CFG] Failed Loaded: %s ---------------------", szPath);
 }

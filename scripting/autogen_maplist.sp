@@ -4,10 +4,13 @@
 #define FILE_DELETE_PATH 		"configs/autogen_maplist/delete.txt"
 #define FILE_DISABLED_PATH 		"configs/autogen_maplist/disabled.txt"
 
-#define DEBUG 			0 	// Включает режим дебага
-#define ABC_SORT 		0 	// Сортировать карты по алфавиту (Если включён данный пункт, то сортировка из файла sorted.txt не будет работать...)
-#define DELETE_MAPS		0 	// 1 - удаляет карту из сервера и maplist, 0 - удаляет только из списка
-#define CLEAR_DIRMAP	0	// Не добавлять карты в директории maps из списка maplist.txt
+#define DEBUG 					1 	// Включает режим дебага
+#define ABC_SORT 				1 	// Сортировать карты по алфавиту
+#define DELETE_MAPS				0 	// 1 - удаляет карту из сервера и maplist, 0 - удаляет только из списка
+#define CLEAR_DIRMAP			0	// Не добавлять карты в директории maps из списка maplist.txt
+#define FULLPATH_INSTEAD_NAME	1	// Указывать вместо имени полный путь до карты
+#define WS_SUBSCRIBED_ONLY		0	// Будет добавлять только карты из subscribed_file_ids.txt
+#define RELOAD_BASECOMMANDS		1	// Вкл/выкл перезагрузку basecommands для обновления списка карт в админ меню.
 // ---------------------------------------------------
 // Ниже ничего не трогаем!
 // ---------------------------------------------------
@@ -16,13 +19,14 @@ ArrayList 	g_hMaps,
 			g_hMapsPath,
 			g_hDeleteMaps,
 			g_hSortMaps,
-			g_hDisablePath;
+			g_hDisablePath,
+			g_hWSMaps;
 
 public Plugin myinfo =
 {
 	name        = 	"Auto Generation MapList",
 	author      = 	"FIVE",
-	version     = 	"1.1",
+	version     = 	"1.2",
 	url         = 	"Source: http://hlmod.ru | Support: https://discord.gg/ajW69wN"
 };
 
@@ -45,6 +49,11 @@ public void OnServerLoad()
 Action cmd_Update(int iArgs)
 {
 	fUpdateMapList();
+
+	#if RELOAD_BASECOMMANDS == 1
+	ServerCommand("sm plugins reload basecommands");
+	#endif
+
 	return Plugin_Handled;
 }
 
@@ -72,11 +81,10 @@ void fUpdateMapList()
 	fDeleteMaps();
 
 	#if ABC_SORT == 1
-	g_hMaps.Sort(Sort_Ascending, Sort_String);
-	PrintToServer("[Resort Maps] ABC method...");
-	#else
-	fResortMaps();
+	fABCSorting();
 	#endif
+
+	fResortMaps();
 
 	fSaveList("maplist.txt");
 	fSaveList("mapcycle.txt");
@@ -129,6 +137,36 @@ stock void fLoadMaps(const char[] sPath)
 	#endif
 }
 
+stock void fABCSorting()
+{
+	ArrayList hMapsSorted, hMapsPathSorted;
+
+	hMapsSorted = g_hMaps.Clone();
+	hMapsPathSorted = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
+	hMapsSorted.Sort(Sort_Ascending, Sort_String);
+
+	char szBuffer[PLATFORM_MAX_PATH];
+	int iSize = hMapsSorted.Length;
+	for(int i = 0; i < iSize; i++)
+	{
+		hMapsSorted.GetString(i, szBuffer, sizeof(szBuffer));
+		int index = g_hMaps.FindString(szBuffer);
+		g_hMapsPath.GetString(index, szBuffer, sizeof(szBuffer));
+		hMapsPathSorted.PushString(szBuffer);
+
+		g_hMaps.Erase(index);
+		g_hMapsPath.Erase(index);
+	}
+
+	g_hMaps = hMapsSorted.Clone();
+	g_hMapsPath = hMapsPathSorted.Clone();
+
+	delete hMapsSorted;
+	delete hMapsPathSorted;
+
+	PrintToServer("[Resort Maps] ABC method... on");
+}
+
 stock bool IsDisabledPath(const char[] sPath)
 {
 	#if CLEAR_DIRMAP == 1
@@ -174,27 +212,12 @@ stock void fPrintDebug()
 	}
 	else PrintToServer("1. no found files .bsp");
 
-	/*
-	PrintToServer(">>>>>>>>>>>>>>>>>>>>>>");
-
-	iSize = g_hMapsPath.Length;
-
-	if(iSize > 0)
-	{
-		for(int i = 0; i < iSize; i++)
-		{
-			g_hMapsPath.GetString(i, szBuffer[1], sizeof(szBuffer[]));
-			PrintToServer("%i, %s", i, szBuffer[1]);
-		}
-	}
-	*/
-
 	PrintToServer("> DEBUG ---------------------");
 }
 
 stock void fSaveList(char[] sPath)
 {
-	char szBuffer[64];
+	char szBuffer[3][64];
 	Handle hFile = OpenFile(sPath, "w");
 
 	if(hFile)
@@ -203,19 +226,25 @@ stock void fSaveList(char[] sPath)
 		int iSize = g_hMaps.Length;
 		for(int i = 0; i < iSize; i++)
 		{
-			g_hMaps.GetString(i, szBuffer, sizeof(szBuffer));
-			WriteFileLine(hFile, szBuffer);
+			g_hMaps.GetString(i, szBuffer[0], sizeof(szBuffer[]));
+			#if FULLPATH_INSTEAD_NAME == 1
+			g_hMapsPath.GetString(i, szBuffer[1], sizeof(szBuffer[]));
+			FormatEx(szBuffer[2], sizeof(szBuffer[]), "%s/%s", szBuffer[1], szBuffer[0]);
+			WriteFileLine(hFile, szBuffer[2][5]);
+			#else
+			WriteFileLine(hFile, szBuffer[0]);
+			#endif
 		}
 		
 		CloseHandle(hFile);
 
-		Format(szBuffer, sizeof(szBuffer), "[Save List] Success. Added %i to %s", iSize, sPath);
-		LogMessage(szBuffer);
+		Format(szBuffer[0], sizeof(szBuffer[]), "[Save List] Success. Added %i to %s", iSize, sPath);
+		LogMessage(szBuffer[0]);
 	}
 	else 
 	{
-		Format(szBuffer, sizeof(szBuffer), "[Save List] Failed to access %s", sPath);
-		LogMessage(szBuffer);
+		Format(szBuffer[0], sizeof(szBuffer[]), "[Save List] Failed to access %s", sPath);
+		LogMessage(szBuffer[0]);
 	}
 	
 }
@@ -224,27 +253,51 @@ stock void fResortMaps()
 {
 	if (g_hMaps.Length < 2 || !g_hSortMaps) return;
 
-	int i, x, iSize, index, iCount;
+	char szBuffer[PLATFORM_MAX_PATH];
+	ArrayList hMapsSort = new ArrayList(ByteCountToCells(64));
+	ArrayList hMapsPathSort = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
+
+	int iSize, iCount;
 	iSize = g_hSortMaps.Length;
 
-	x = 0;
-	char szItemInfo[128];
-	for (i = 0; i < iSize; ++i)
+
+	if(iSize > 0)
 	{
-		g_hSortMaps.GetString(i, szItemInfo, sizeof(szItemInfo));
-		index = g_hMaps.FindString(szItemInfo);
-		if (index != -1)
+		for(int i = 0; i < iSize; i++)
 		{
-			if (index != x)
+			g_hSortMaps.GetString(i, szBuffer, sizeof(szBuffer));
+			
+			int index = g_hMaps.FindString(szBuffer);
+			
+			if(index != -1)
 			{
-				g_hMaps.SwapAt(index, x);
-				g_hMapsPath.SwapAt(index, x);
+				hMapsSort.PushString(szBuffer);
+				g_hMaps.Erase(index);
+				g_hMapsPath.GetString(index, szBuffer, sizeof(szBuffer));
+				hMapsPathSort.PushString(szBuffer);
+				g_hMapsPath.Erase(index);
 				iCount++;
 			}
-			
-			++x;
 		}
 	}
+
+	iSize = g_hMaps.Length;
+	if(iSize > 0)
+	{
+		for(int i = 0; i < iSize; i++)
+		{
+			g_hMaps.GetString(i, szBuffer, sizeof(szBuffer));
+			hMapsSort.PushString(szBuffer);
+			g_hMapsPath.GetString(i, szBuffer, sizeof(szBuffer));
+			hMapsPathSort.PushString(szBuffer);
+		}
+
+		g_hMaps = hMapsSort.Clone();
+		g_hMapsPath = hMapsPathSort.Clone();
+	}
+
+	delete hMapsSort;
+	delete hMapsPathSort;
 
 	PrintToServer("[Resort Maps] Count: %i", iCount);
 }

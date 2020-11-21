@@ -4,13 +4,15 @@
 #define FILE_DELETE_PATH 		"configs/autogen_maplist/delete.txt"
 #define FILE_DISABLED_PATH 		"configs/autogen_maplist/disabled.txt"
 
-#define DEBUG 					1 	// Включает режим дебага
-#define ABC_SORT 				1 	// Сортировать карты по алфавиту
-#define DELETE_MAPS				0 	// 1 - удаляет карту из сервера и maplist, 0 - удаляет только из списка
-#define CLEAR_DIRMAP			0	// Не добавлять карты в директории maps из списка maplist.txt
-#define FULLPATH_INSTEAD_NAME	1	// Указывать вместо имени полный путь до карты
-#define WS_SUBSCRIBED_ONLY		0	// Будет добавлять только карты из subscribed_file_ids.txt
-#define RELOAD_BASECOMMANDS		1	// Вкл/выкл перезагрузку basecommands для обновления списка карт в админ меню.
+// 1 - включить, 0 - выключить
+#define DEBUG 					1 	// 1 - Включает режим дебага
+#define ABC_SORT 				1 	// 1 - Сортировать карты по алфавиту (Если у вас есть заполненый sorted.txt, то эти карты будут первыми в списке, а далее по алфавиту)
+#define DELETE_MAPS				0 	// 1 - Удаляет файл карты из сервера, 0 - не добавляет в список maplist.txt
+#define CLEAR_DIRMAP			0	// 1 - Не добавлять карты в директории maps в спискок maplist.txt
+#define FULLPATH_INSTEAD_NAME	1	// 1 - Указывать вместо имени полный путь до карты
+
+#define RELOAD_BASECOMMANDS		1	// 1 - Вкл перезагрузку basecommands для обновления списка карт в админ меню.
+#define WS_SUBSCRIBED_ONLY		0	// 1 - Будет добавлять только карты из subscribed_file_ids.txt (Если не знаете что это, то не трогайте!)
 // ---------------------------------------------------
 // Ниже ничего не трогаем!
 // ---------------------------------------------------
@@ -37,6 +39,7 @@ public void OnPluginStart()
 	g_hDeleteMaps = new ArrayList(ByteCountToCells(64));
 	g_hSortMaps = new ArrayList(ByteCountToCells(64));
 	g_hDisablePath = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
+	g_hWSMaps = new ArrayList(ByteCountToCells(32));
 
 	RegServerCmd("sm_update_maplist", cmd_Update);
 }
@@ -64,10 +67,18 @@ void fUpdateMapList()
 	g_hDeleteMaps.Clear();
 	g_hSortMaps.Clear();
 	g_hDisablePath.Clear();
+	g_hWSMaps.Clear();
 
 	fLoadCfg(FILE_SORTED_PATH, 0);
 	fLoadCfg(FILE_DELETE_PATH, 1);
 	fLoadCfg(FILE_DISABLED_PATH, 2);
+
+	#if WS_SUBSCRIBED_ONLY == 1
+	if(FileExists("webapi_authkey.txt"))
+	{
+		fLoadCfg("subscribed_file_ids.txt", 3, true);
+	}
+	#endif
 	
 	fLoadMaps("maps");
 
@@ -111,6 +122,9 @@ stock void fLoadMaps(const char[] sPath)
 		{
 			case FileType_Directory:
 			{
+				#if WS_SUBSCRIBED_ONLY == 1
+				if(sPath[5] == 'w' && !IsValidWSID(sFileName)) continue;
+				#endif
 				fLoadMaps(sPathFull);
 			}
 			case FileType_File:
@@ -135,6 +149,25 @@ stock void fLoadMaps(const char[] sPath)
 	#if DEBUG == 1
 	PrintToServer("[Load Maps] Finded %i maps (on - %s)", fileCounter, sPath);
 	#endif
+}
+
+stock bool IsValidWSID(char[] sID)
+{
+	char sBuffer[32];
+	int iSize = g_hWSMaps.Length;
+
+	if(iSize > 0)
+	{
+		for(int i = 0; i < iSize; i++)
+		{
+			g_hWSMaps.GetString(i, sBuffer, sizeof(sBuffer));
+			if(!strcmp(sBuffer, sID)) return true;
+		}
+
+		return false;
+	}
+
+	return true;
 }
 
 stock void fABCSorting()
@@ -358,10 +391,11 @@ stock void fDeleteMaps()
 	PrintToServer("[Delete Maps] Count: %i", iCount);
 }
 
-stock void fLoadCfg(char szPath[PLATFORM_MAX_PATH], int iType = 0)
+stock void fLoadCfg(char szPath[PLATFORM_MAX_PATH], int iType = 0, bool bFullPath = false)
 {
 	char sPath[PLATFORM_MAX_PATH], sMap[128];
-	BuildPath(Path_SM, sPath, sizeof(sPath), szPath);
+	if(bFullPath) strcopy(sPath, sizeof(sPath), szPath);
+	else BuildPath(Path_SM, sPath, sizeof(sPath), szPath);
 
 	if(FileExists(sPath))
 	{
@@ -379,6 +413,7 @@ stock void fLoadCfg(char szPath[PLATFORM_MAX_PATH], int iType = 0)
 						case 0: g_hSortMaps.PushString(sMap);
 						case 1: g_hDeleteMaps.PushString(sMap);
 						case 2: g_hDisablePath.PushString(sMap);
+						case 3: g_hWSMaps.PushString(sMap);
 					}
 				}
 			}
@@ -390,6 +425,7 @@ stock void fLoadCfg(char szPath[PLATFORM_MAX_PATH], int iType = 0)
 				case 0: if ((g_hSortMaps).Length == 0) g_hSortMaps.Clear();
 				case 1: if ((g_hDeleteMaps).Length == 0) g_hDeleteMaps.Clear();
 				case 2: if ((g_hDisablePath).Length == 0) g_hDisablePath.Clear();
+				case 3: if ((g_hWSMaps).Length == 0) g_hWSMaps.Clear();
 			}
 		}
 	}

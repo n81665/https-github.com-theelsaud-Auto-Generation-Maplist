@@ -5,11 +5,12 @@
 #define FILE_DISABLED_PATH 		"configs/autogen_maplist/disabled.txt"
 
 // 1 - включить, 0 - выключить
-#define DEBUG 					0 	// 1 - Включает режим дебага
+#define DEBUG 					1 	// 1 - Включает режим дебага
 #define ABC_SORT 				1 	// 1 - Сортировать карты по алфавиту (Если у вас есть заполненый sorted.txt, то эти карты будут первыми в списке, а далее по алфавиту)
 #define DELETE_MAPS				0 	// 1 - Удаляет файл карты из сервера, 0 - не добавляет в список maplist.txt
 #define CLEAR_DIRMAP			0	// 1 - Не добавлять карты в директории maps в спискок maplist.txt
-#define FULLPATH_INSTEAD_NAME	1	// 1 - Указывать вместо имени полный путь до карты
+#define FULLPATH_INSTEAD_NAME	0	// 1 - Указывать вместо имени полный путь до карты
+#define ADD_BSP					1	// 1 - Указывать .bsp в конце
 
 #define RELOAD_BASECOMMANDS		1	// 1 - Вкл перезагрузку basecommands для обновления списка карт в админ меню.
 #define WS_SUBSCRIBED_ONLY		0	// 1 - Будет добавлять только карты из subscribed_file_ids.txt (Если не знаете что это, то не трогайте!)
@@ -131,7 +132,9 @@ stock void fLoadMaps(const char[] sPath)
 			{
 				if(StrContains(sPathFull, ".bsp") != -1)
 				{
+					#if ADD_BSP == 0
 					ReplaceString(sFileName, sizeof(sFileName), ".bsp", "", false);
+					#endif
 					g_hMaps.PushString(sFileName);
 					g_hMapsPath.PushString(sPath);
 					//g_hMapsPath.PushString(sPathFull);
